@@ -1,0 +1,13 @@
+"""
+the goal of this is to make a simple web crawler
+to crawl through pages in a website and on each page
+be able to perform a specific action
+"""
+
+class SimpleCrawler:
+    
+    def __init__(self, site_root):
+        self.visited = []
+        self.current_location = []
+        #this is a stack of where we are
+        self.current_location.append(site_root)
