@@ -1,0 +1,4 @@
+from SimpleCrawler import SimpleCrawler
+
+def main():
+    sc = SimpleCrawler("http://knowledgecenter.unr.edu/")
