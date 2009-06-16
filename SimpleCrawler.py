@@ -4,6 +4,7 @@ to crawl through pages in a website and on each page
 be able to perform a specific action
 """
 import urllib2
+import HTMLParser
 from BeautifulSoup import BeautifulSoup
 
 
@@ -18,15 +19,14 @@ class SimpleCrawler:
         #all actions will be passed a string of the current url and a beautifulsoup object
         self.actions = []
         self.bad_urls = []
-        self.other_errors = []
+        self.parse_errors = []
         #links we've visted
         self.visited = []
 
         #links to visit
         self.visit_queue = []
         self.visit_queue.append(site_root)
-        print self.visit_queue
-       
+               
         #this will temporarly hold the current location
         self.current_location = site_root
 
@@ -46,7 +46,17 @@ class SimpleCrawler:
                 number_crawled = number_crawled+1
             except urllib2.HTTPError:
                 self.bad_urls.append(self.current_location)
+                print "**bad url**"
                 print self.current_location
+            except HTMLParser.HTMLParseError:
+                self.parse_errors.append(self.current_location)
+                print "**parse error**"
+                print self.current_location
+            if(number_crawled % 50 == 0):
+                print "!!!!!!!!!\n"
+                print str(number_crawled)+" crawled so far!"
+                print "with: "+str(len(self.visit_queue))+" to go!\n"
+                print "and "+str(len(self.bad_urls))+" bad urls, "+str(len(self.parse_errors))+" parse errors"
         print "Done! Crawled "+str(number_crawled)+" pages"
 
     """
@@ -76,11 +86,13 @@ class SimpleCrawler:
                 if not page_url in self.visited:
                     self.visit_queue.append(page_url)
                     testresults.write(page_url+"\n")
+                else:
+                    print "been there done that"
+        #let's clean up the queue
+        list(set(self.visit_queue))
         testresults.close()
 
     def join_root_relative_link(self,root,rel_link):
-        if(len(rel_link) >= 1 and rel_link[0] == "/"):
-            rel_link = rel_link.replace("/","",1)
         return root+rel_link
 
     def make_root(self, current_location):
