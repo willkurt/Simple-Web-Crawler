@@ -5,10 +5,12 @@ def main():
     #sc = SimpleCrawler("http://lib-bling.com/")
    
     dot_file = open("crawler_out.dot",'w')
-    dot_file.write("graph crawlerout{\nnode [shape=point];\n")
-    def print_title(current, soup):
+    dot_file.write("digraph crawlerout{\nnode [shape=point];\n")
+    def print_title(current, internal_links, soup):
         print soup.title
         print current
+        for each in internal_links:
+            dot_file.write("\""+current+"\" -> \""+each+"\";\n")
         
 
 

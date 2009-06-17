@@ -46,9 +46,10 @@ class SimpleCrawler:
             try:
                 page = self.open_with_header(self.current_location)
                 soup = BeautifulSoup(page)
-                self.queue_relative_links(soup)
+                internal_links = self.get_internal_pointing_links(soup)
+                self.queue_relative_links(internal_links)
                 for action in self.actions:
-                    action(self.current_location, soup)
+                    action(self.current_location, internal_links,soup)
                 number_crawled = number_crawled+1
             except urllib2.HTTPError:
                 self.bad_urls.append(self.current_location)
@@ -105,7 +106,8 @@ class SimpleCrawler:
                     page_url = each
                 elif(not "http" in each['href']) and (not "#" in each['href']):
                     page_url = self.join_root_relative_link(current_root,each['href'])
-                internal_links.append(page_url)
+                if not page_url == "":
+                    internal_links.append(page_url)
         return internal_links
                         
 
@@ -113,19 +115,10 @@ class SimpleCrawler:
     """
     not so much 'relative' as links that point back to the current site
     """
-    def queue_relative_links(self, soup):
-        current_root = self.make_root(self.current_location)
-        for each in soup('a'):
-            page_url = ""
-            if each.has_key('href'):
-                if(self.site_root.replace("http://","") in each):
-                    page_url = each
-                elif(not "http" in each['href']) and (not "#" in each['href']):
-                    page_url = self.join_root_relative_link(current_root,each['href'])
-                
-                if not page_url == "":    
-                    if not page_url in self.visited:
-                        self.visit_queue.append(page_url)
+    def queue_relative_links(self, internal_links):
+        for link in internal_links:
+            if not link  in self.visited:
+                self.visit_queue.append(link)
         #let's clean up the queue
         self.visit_queue = list(set(self.visit_queue))
         
