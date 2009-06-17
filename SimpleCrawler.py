@@ -5,21 +5,27 @@ be able to perform a specific action
 """
 import urllib2
 import HTMLParser
+import httplib
 from BeautifulSoup import BeautifulSoup
 
 
 class SimpleCrawler:
     
-    def __init__(self, site_root):
+    def __init__(self, site_root,header_dict = {'User-Agent':'WillBot'},ignore_params = False):
 
         if(site_root[-1] != '/'):
             site_root = site_root+'/'
-
+    
+        self.site_root = site_root
+        self.header = header_dict
+        #this will ignore paramters after a '?'
+        self.ignore_params = ignore_params
         #actions that will be added later to be performed when each page is visted
         #all actions will be passed a string of the current url and a beautifulsoup object
         self.actions = []
         self.bad_urls = []
         self.parse_errors = []
+        self.url_errors = []
         #links we've visted
         self.visited = []
 
@@ -38,7 +44,7 @@ class SimpleCrawler:
             self.current_location = self.next_in_queue()
             self.visited.append(self.current_location)
             try:
-                page = urllib2.urlopen(self.current_location)
+                page = self.open_with_header(self.current_location)
                 soup = BeautifulSoup(page)
                 self.queue_relative_links(soup)
                 for action in self.actions:
@@ -52,16 +58,27 @@ class SimpleCrawler:
                 self.parse_errors.append(self.current_location)
                 print "**parse error**"
                 print self.current_location
+            except urllib2.URLError:
+                self.url_errors.append(self.current_location)
+                print "**url error**"
+                print self.current_location
             if(number_crawled % 50 == 0):
                 print "!!!!!!!!!\n"
                 print str(number_crawled)+" crawled so far!"
                 print "with: "+str(len(self.visit_queue))+" to go!\n"
                 print "and "+str(len(self.bad_urls))+" bad urls, "+str(len(self.parse_errors))+" parse errors"
         print "Done! Crawled "+str(number_crawled)+" pages"
+        print "With:\n\t"+str(len(self.bad_urls))+" - badurls\n"
+        print "\t"+str(len(self.parse_errors))+" - parse errors\n"
+        print "\t"+str(len(self.url_errors))+" - url errors\n"
+        
+    def open_with_header(self, url):
+        data = None
+        request = urllib2.Request(url,data,self.header)
+        return urllib2.urlopen(request)
+        
+        
 
-    """
-    for now actions are assumed to be soup objects
-    """
     def add_action(self,action):
         self.actions.append(action)
     
@@ -76,23 +93,45 @@ class SimpleCrawler:
         self.visit_queue = self.visit_queue[1:]
         return next
 
+    """
+    not so much 'relative' as links that point back to the current site
+    """
     def queue_relative_links(self, soup):
         current_root = self.make_root(self.current_location)
         testresults = open("testresults.txt",'a')
         testresults.write("*****"+self.current_location+"*******\n")
         for each in soup('a'):
-            if (each.has_key('href')) and (not "http" in each['href']) and (not "#" in each['href']):
-                page_url = self.join_root_relative_link(current_root,each['href'])
-                if not page_url in self.visited:
-                    self.visit_queue.append(page_url)
-                    testresults.write(page_url+"\n")
-                else:
-                    print "been there done that"
+            page_url = ""
+            if each.has_key('href'):
+                if(self.site_root.replace("http://","") in each):
+                    page_url = each
+                elif(not "http" in each['href']) and (not "#" in each['href']):
+                    page_url = self.join_root_relative_link(current_root,each['href'])
+                
+                if not page_url == "":    
+                    if not page_url in self.visited:
+                        self.visit_queue.append(page_url)
+                        testresults.write(page_url+"\n")
         #let's clean up the queue
-        list(set(self.visit_queue))
+        self.visit_queue = list(set(self.visit_queue))
         testresults.close()
 
     def join_root_relative_link(self,root,rel_link):
+        
+        #I'm not sure this is the best place to remove params, but I can't think of a better one now
+        if self.ignore_params and "?" in rel_link:
+            rel_link = rel_link.split("?")[0]
+        if "../" in rel_link:
+            backtrack = rel_link.count("../")
+            parts = root.strip("/").split("/")
+            root = "/".join(parts[:len(parts)-backtrack])+"/"
+            if(len(self.site_root) > root):
+                root = site_root
+            rel_link = rel_link.replace("../","")
+        elif(len(rel_link)>0 and rel_link[0] == "/"):
+            rel_link = rel_link[1:]
+            root = self.site_root
+        
         return root+rel_link
 
     def make_root(self, current_location):
