@@ -93,13 +93,28 @@ class SimpleCrawler:
         self.visit_queue = self.visit_queue[1:]
         return next
 
+
+    #eventually this will need to be refactored into 'queue_relative...' below
+    def get_internal_pointing_links(self,soup):
+        internal_links = []
+        current_root = self.make_root(self.current_location)
+        for each in soup('a'):
+            page_url = ""
+            if each.has_key('href'):
+                if(self.site_root.replace("http://","") in each):
+                    page_url = each
+                elif(not "http" in each['href']) and (not "#" in each['href']):
+                    page_url = self.join_root_relative_link(current_root,each['href'])
+                internal_links.append(page_url)
+        return internal_links
+                        
+
+     
     """
     not so much 'relative' as links that point back to the current site
     """
     def queue_relative_links(self, soup):
         current_root = self.make_root(self.current_location)
-        testresults = open("testresults.txt",'a')
-        testresults.write("*****"+self.current_location+"*******\n")
         for each in soup('a'):
             page_url = ""
             if each.has_key('href'):
@@ -111,10 +126,9 @@ class SimpleCrawler:
                 if not page_url == "":    
                     if not page_url in self.visited:
                         self.visit_queue.append(page_url)
-                        testresults.write(page_url+"\n")
         #let's clean up the queue
         self.visit_queue = list(set(self.visit_queue))
-        testresults.close()
+        
 
     def join_root_relative_link(self,root,rel_link):
         
